@@ -10,13 +10,13 @@ use serde::{Deserialize, Serialize};
 
 use pool::ThreadPool;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct Request {
     method: String,
     number: i32,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 struct Response {
     method: String,
     prime: bool,
@@ -26,15 +26,25 @@ fn is_valid_request(req: &Request) -> bool {
     req.method == "isPrime"
 }
 
-fn is_prime(_v: i32) -> bool {
+fn is_prime(n: i32) -> bool {
+    if n <= 1 {
+        return false;
+    }
+
+    for i in 2..((n as f64).sqrt() as i32) {
+        if n % i == 0 {
+            return false;
+        }
+    }
+
     true
 }
 
-fn handle_request(req: &Request) -> Result<Response, &str> {
-    Ok(Response {
+fn handle_request(req: &Request) -> Response {
+    Response {
         method: "isPrime".to_string(),
         prime: is_prime(req.number),
-    })
+    }
 }
 
 fn handle_client(mut stream: TcpStream) {
@@ -52,7 +62,7 @@ fn handle_client(mut stream: TcpStream) {
             break;
         }
 
-        let prime_response = handle_request(&request).unwrap();
+        let prime_response = handle_request(&request);
         let response: Vec<u8> = serde_json::to_vec(&prime_response).unwrap();
 
         stream.write_all(&response).unwrap();
