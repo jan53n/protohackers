@@ -4,6 +4,8 @@ use std::{
     env,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
+    os::linux::raw,
+    str::from_utf8,
 };
 
 use serde::{Deserialize, Serialize};
@@ -55,6 +57,8 @@ fn handle_client(mut stream: TcpStream) {
         reader
             .read_until(0xA, &mut raw_json)
             .expect("failed to read!");
+
+        println!("{:?}", from_utf8(&raw_json));
 
         let request: Request = serde_json::from_slice(&raw_json[..]).expect("Invalid request!");
 
