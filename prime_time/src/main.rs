@@ -4,7 +4,6 @@ use std::{
     env,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
-    os::linux::raw,
     str::from_utf8,
 };
 
