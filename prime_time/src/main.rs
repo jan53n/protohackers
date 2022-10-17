@@ -49,7 +49,7 @@ fn handle_request(req: &Request) -> Response {
 }
 
 fn handle_client(mut stream: TcpStream) {
-    loop {
+    // loop {
         let mut reader = BufReader::new(&stream);
         let mut raw_json: Vec<u8> = Vec::new();
 
@@ -62,14 +62,14 @@ fn handle_client(mut stream: TcpStream) {
         let request: Request = serde_json::from_slice(&raw_json[..]).expect("Invalid request!");
 
         if !is_valid_request(&request) {
-            break;
+            return;
         }
 
         let prime_response = handle_request(&request);
         let response: Vec<u8> = serde_json::to_vec(&prime_response).unwrap();
 
         stream.write_all(&response).unwrap();
-    }
+    // }
 }
 
 fn main() -> std::io::Result<()> {
