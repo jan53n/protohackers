@@ -49,8 +49,10 @@ fn handle_request(req: &Request) -> Response {
 }
 
 fn handle_client(mut stream: TcpStream) {
+    let s = stream.try_clone().expect("failed to clone stream");
+    let mut reader = BufReader::new(&s);
+
     loop {
-        let mut reader = BufReader::new(&stream);
         let mut raw_json: Vec<u8> = Vec::new();
 
         reader
@@ -59,7 +61,7 @@ fn handle_client(mut stream: TcpStream) {
 
         println!("{:?}", from_utf8(&raw_json));
 
-        let request: Request = serde_json::from_slice(&raw_json[..]).expect("Invalid request!");
+        let request: Request = serde_json::from_slice(&raw_json[..]).unwrap();
 
         if !is_valid_request(&request) {
             break;
