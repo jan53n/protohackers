@@ -4,12 +4,12 @@ use std::{
     env,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
-    str::from_utf8,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{ser::Error, Deserialize, Serialize};
 
 use pool::ThreadPool;
+use serde_json::Result;
 
 #[derive(Deserialize, Debug)]
 struct Request {
@@ -41,36 +41,30 @@ fn is_prime(n: i32) -> bool {
     true
 }
 
-fn handle_request(req: &Request) -> Response {
-    Response {
+fn handle_request(req: &String) -> Result<Response> {
+    let req: Request = serde_json::from_str(&req)?;
+
+    if !is_valid_request(&req) {
+        return Err(Error::custom("invalid request"));
+    }
+
+    Ok(Response {
         method: "isPrime".to_string(),
         prime: is_prime(req.number),
-    }
+    })
 }
 
-fn handle_client(mut stream: TcpStream) {
-    let s = stream.try_clone().expect("failed to clone stream");
-    let mut reader = BufReader::new(&s);
+fn handle_client(stream: TcpStream) {
+    let mut s = stream.try_clone().unwrap();
+    let reader = BufReader::new(stream);
 
-    loop {
-        let mut raw_json: Vec<u8> = Vec::new();
+    for raw_request in reader.lines() {
+        let response = handle_request(&raw_request.unwrap());
 
-        reader
-            .read_until(0xA, &mut raw_json)
-            .expect("failed to read!");
-
-        println!("{:?}", from_utf8(&raw_json));
-
-        let request: Request = serde_json::from_slice(&raw_json[..]).unwrap();
-
-        if !is_valid_request(&request) {
-            break;
+        if response.is_err() {
+            s.write_all("{\n".as_bytes()).unwrap();
+            return;
         }
-
-        let prime_response = handle_request(&request);
-        let response: Vec<u8> = serde_json::to_vec(&prime_response).unwrap();
-
-        stream.write_all(&response).unwrap();
     }
 }
 
