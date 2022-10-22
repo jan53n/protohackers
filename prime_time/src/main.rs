@@ -4,6 +4,7 @@ use std::{
     env,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
+    time::Duration,
 };
 
 use serde::{ser::Error, Deserialize, Serialize};
@@ -32,7 +33,7 @@ fn is_prime(n: i32) -> bool {
         return false;
     }
 
-    for i in 2..((n as f64).sqrt() as i32) {
+    for i in 2..(n - 1) {
         if n % i == 0 {
             return false;
         }
@@ -61,9 +62,16 @@ fn handle_client(stream: TcpStream) {
     for raw_request in reader.lines() {
         let response = handle_request(&raw_request.unwrap());
 
-        if response.is_err() {
-            s.write_all("{\n".as_bytes()).unwrap();
-            return;
+        match response {
+            Err(_) => {
+                s.write_all("{\n".as_bytes()).unwrap();
+                return;
+            }
+            Ok(r) => {
+                let mut res = serde_json::to_string(&r).unwrap();
+                res.push_str("\n");
+                s.write_all(res.as_bytes()).unwrap();
+            }
         }
     }
 }
