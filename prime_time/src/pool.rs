@@ -6,7 +6,7 @@ use std::{
     thread,
 };
 
-type Job = Box<dyn FnOnce() + Send + 'static>;
+type Job = Box<dyn FnOnce(usize) + Send + 'static>;
 
 pub struct ThreadPool {
     sender: Sender<Job>,
@@ -26,7 +26,7 @@ impl ThreadPool {
 
     pub fn execute<F>(&self, job: F)
     where
-        F: FnOnce() + Send + 'static,
+        F: FnOnce(usize) + Send + 'static,
     {
         let job = Box::new(job);
         self.sender.send(job).expect("failed to send message!");
@@ -43,7 +43,7 @@ impl Worker {
             match message {
                 Ok(job) => {
                     println!("[info] job processing on #{}", id);
-                    job();
+                    job(id);
                 }
                 _ => {
                     println!("[error] shutting down worker #{}", id);

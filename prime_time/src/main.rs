@@ -4,13 +4,14 @@ use std::{
     env,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
-    time::Duration,
 };
 
 use serde::{ser::Error, Deserialize, Serialize};
 
 use pool::ThreadPool;
 use serde_json::Result;
+
+static MALFORMED_RESPONSE: &[u8; 2] = b"{\n";
 
 #[derive(Deserialize, Debug)]
 struct Request {
@@ -42,35 +43,44 @@ fn is_prime(n: i32) -> bool {
     true
 }
 
-fn handle_request(req: &String) -> Result<Response> {
+fn handle_request(req: &String) -> Result<String> {
     let req: Request = serde_json::from_str(&req)?;
 
     if !is_valid_request(&req) {
         return Err(Error::custom("invalid request"));
     }
 
-    Ok(Response {
+    let response = Response {
         method: "isPrime".to_string(),
         prime: is_prime(req.number),
-    })
+    };
+
+    let mut string_response = serde_json::to_string(&response).unwrap();
+    string_response.push_str("\n");
+
+    Ok(string_response)
 }
 
-fn handle_client(stream: TcpStream) {
-    let mut s = stream.try_clone().unwrap();
-    let reader = BufReader::new(stream);
+fn handle_client(mut stream: TcpStream, id: usize) {
+    let stream_cloned = stream.try_clone().unwrap();
+    let reader = BufReader::new(stream_cloned);
 
     for raw_request in reader.lines() {
-        let response = handle_request(&raw_request.unwrap());
+        let req = raw_request.unwrap();
+        let rr = req.clone();
+        let response = handle_request(&req);
 
-        match response {
+        println!("[debug] #{} {:?}, {:?}", id, &req, &response);
+
+        match &response {
             Err(_) => {
-                s.write_all("{\n".as_bytes()).unwrap();
-                return;
+                stream.write_all(MALFORMED_RESPONSE).unwrap();
+                break;
             }
             Ok(r) => {
-                let mut res = serde_json::to_string(&r).unwrap();
-                res.push_str("\n");
-                s.write_all(res.as_bytes()).unwrap();
+                stream
+                    .write_all(r.as_bytes())
+                    .expect(format!("broken pipe #{} {:?}", id, rr).as_str());
             }
         }
     }
@@ -79,7 +89,7 @@ fn handle_client(stream: TcpStream) {
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let port = args.get(1).expect("please provide a port");
-    let addr = format!("0.0.0.0:{}", port);
+    let addr = format!("[::]:{}", port);
     let pool = ThreadPool::new(5);
     let listener = TcpListener::bind(addr.as_str())?;
 
@@ -88,8 +98,8 @@ fn main() -> std::io::Result<()> {
     for stream in listener.incoming() {
         let stream = stream?;
 
-        pool.execute(|| {
-            handle_client(stream);
+        pool.execute(|id| {
+            handle_client(stream, id);
         });
     }
     Ok(())
