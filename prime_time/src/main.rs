@@ -78,9 +78,9 @@ fn handle_client(mut stream: TcpStream, id: usize) {
                 break;
             }
             Ok(r) => {
-                stream
-                    .write_all(r.as_bytes())
-                    .expect(format!("broken pipe #{} {:?}", id, rr).as_str());
+                if stream.write_all(r.as_bytes()).is_err() {
+                    break;
+                }
             }
         }
     }
