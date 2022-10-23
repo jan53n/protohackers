@@ -28,6 +28,15 @@ struct Response {
     prime: bool,
 }
 
+impl Response {
+    pub fn new(prime: bool) -> Self {
+        Self {
+            method: "isPrime".to_string(),
+            prime,
+        }
+    }
+}
+
 fn is_valid_request(req: &Request) -> bool {
     req.method == "isPrime"
 }
@@ -49,11 +58,7 @@ fn handle_request(req: &String) -> Result<String> {
         return Err(Error::custom("invalid request"));
     }
 
-    let response = Response {
-        method: "isPrime".to_string(),
-        prime: is_prime(&req.number),
-    };
-
+    let response = Response::new(is_prime(&req.number));
     let mut string_response = serde_json::to_string(&response).unwrap();
     string_response.push_str("\n");
 
@@ -71,7 +76,7 @@ fn handle_client(mut stream: TcpStream, id: usize) {
         match &response {
             Err(_) => {
                 stream.write_all(MALFORMED_RESPONSE).unwrap();
-                println!("[debug] {:?} -> {:?}", &req, MALFORMED_RESPONSE);
+                println!("[debug] {:?} -> MALFORMED_RESPONSE", &req);
                 break;
             }
             Ok(r) => {
