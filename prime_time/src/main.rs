@@ -4,19 +4,22 @@ use std::{
     env,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
+    str::FromStr,
 };
 
+use is_prime::is_prime as is_p;
+use num_bigint::BigInt;
 use serde::{ser::Error, Deserialize, Serialize};
 
 use pool::ThreadPool;
-use serde_json::Result;
+use serde_json::{Number, Result};
 
 static MALFORMED_RESPONSE: &[u8; 2] = b"{\n";
 
 #[derive(Deserialize, Debug)]
 struct Request {
     method: String,
-    number: i32,
+    number: Number,
 }
 
 #[derive(Serialize, Debug)]
@@ -29,18 +32,14 @@ fn is_valid_request(req: &Request) -> bool {
     req.method == "isPrime"
 }
 
-fn is_prime(n: i32) -> bool {
-    if n <= 1 {
+fn is_prime(n: &Number) -> bool {
+    let big = BigInt::from_str(n.to_string().as_str()).unwrap_or(BigInt::from(0));
+
+    if big <= BigInt::from(1) {
         return false;
     }
 
-    for i in 2..(n - 1) {
-        if n % i == 0 {
-            return false;
-        }
-    }
-
-    true
+    is_p(big.to_string().as_str())
 }
 
 fn handle_request(req: &String) -> Result<String> {
@@ -52,7 +51,7 @@ fn handle_request(req: &String) -> Result<String> {
 
     let response = Response {
         method: "isPrime".to_string(),
-        prime: is_prime(req.number),
+        prime: is_prime(&req.number),
     };
 
     let mut string_response = serde_json::to_string(&response).unwrap();
@@ -66,15 +65,13 @@ fn handle_client(mut stream: TcpStream, id: usize) {
     let reader = BufReader::new(stream_cloned);
 
     for raw_request in reader.lines() {
-        let req = raw_request.unwrap();
-        let rr = req.clone();
+        let req = raw_request.expect("[error] unexpected line!");
         let response = handle_request(&req);
-
-        println!("[debug] #{} {:?}, {:?}", id, &req, &response);
 
         match &response {
             Err(_) => {
                 stream.write_all(MALFORMED_RESPONSE).unwrap();
+                println!("[debug] {:?} -> {:?}", &req, MALFORMED_RESPONSE);
                 break;
             }
             Ok(r) => {
@@ -83,6 +80,8 @@ fn handle_client(mut stream: TcpStream, id: usize) {
                 }
             }
         }
+
+        println!("[debug] #{} {:?} -> {:?}", id, &req, &response);
     }
 }
 
