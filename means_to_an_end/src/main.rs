@@ -1,52 +1,42 @@
 pub mod message;
 pub mod pool;
+pub mod store;
 
 use crate::{
     message::{Message, RawMessage},
     pool::ThreadPool,
+    store::get_mean_from_minmax_time,
 };
-
 use std::{
     env,
     error::Error,
     io::{Read, Write},
-    net::{TcpListener, TcpStream},
+    net::{TcpListener},
+    time::Instant,
 };
+use store::PriceStore;
 
-fn get_mean_from_minmax(store: &Vec<i32>, min_time: i32, max_time: i32) -> i32 {
-    let mut c = 0;
-    let mut t = 0;
-
-    for i in min_time..max_time {
-        if let Some(v) = store.get(i as usize) {
-            c += 1;
-            t += v;
-        }
-    }
-
-    t / c
-}
-
-fn handle_client(mut stream: TcpStream, _id: usize) -> Result<(), Box<dyn Error>> {
-    let mut store = Vec::new();
+fn handle_client(mut stream: impl Read + Write, _id: usize) -> Result<(), Box<dyn Error>> {
+    let mut store = PriceStore::new();
 
     loop {
         let mut buf: RawMessage = [0; 9];
         stream.read_exact(&mut buf[..])?;
 
-        println!("{:?}", buf);
+        let message = Message::try_from(buf).unwrap_or(Message::Undefined);
 
-        match Message::try_from(buf).unwrap_or(Message::Undefined) {
+        println!("[debug] {:?} -> {:?}", buf, message);
+
+        match message {
             Message::Insert { timestamp, price } => {
-                store.insert(timestamp as usize, price);
+                store.insert(timestamp, price);
             }
             Message::Query { min_time, max_time } => {
-                let mean: i32 = get_mean_from_minmax(&store, min_time, max_time);
+                let _st = Instant::now();
+                let mean: i32 = get_mean_from_minmax_time(&store, min_time, max_time);
                 stream.write_all(&mean.to_be_bytes()).unwrap();
             }
-            Message::Undefined => {
-                return Ok(());
-            }
+            Message::Undefined => {}
         }
     }
 }
@@ -63,8 +53,9 @@ fn main() -> std::io::Result<()> {
     for stream in listener.incoming() {
         let stream = stream?;
 
-        pool.execute(|id| {
-            handle_client(stream, id).unwrap();
+        pool.execute(|id| match handle_client(stream, id) {
+            Err(e) => println!("{:?}", e),
+            _ => {}
         });
     }
     Ok(())
