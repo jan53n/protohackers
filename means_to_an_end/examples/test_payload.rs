@@ -1,8 +1,8 @@
-use std::{io::Write, net::TcpStream};
+use std::{io::Write, net::TcpStream, thread, time::Duration};
 
 fn main() -> std::io::Result<()> {
-    let mut stream = TcpStream::connect("127.0.0.1:8888")?;
-    let payload = vec![
+    let mut handles = Vec::new();
+    let payload = [
         [73, 0, 0, 48, 57, 0, 0, 0, 101],
         [73, 0, 0, 48, 58, 0, 0, 0, 102],
         [73, 0, 0, 48, 59, 0, 0, 0, 100],
@@ -1760,8 +1760,21 @@ fn main() -> std::io::Result<()> {
         [81, 21, 224, 31, 22, 22, 249, 144, 177],
     ];
 
-    for l in &payload {
-        stream.write_all(l).unwrap();
+    for _j in 0..5 {
+        let t = thread::spawn(move || {
+            let mut stream = TcpStream::connect("127.0.0.1:8888").unwrap();
+
+            for l in &payload {
+                stream.write_all(l).unwrap();
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        });
+
+        handles.push(t);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
     }
 
     Ok(())

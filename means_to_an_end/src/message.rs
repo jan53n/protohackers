@@ -21,7 +21,7 @@ impl From<TryFromSliceError> for MessageError {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Message {
     Insert { timestamp: i32, price: i32 },
     Query { min_time: i32, max_time: i32 },
