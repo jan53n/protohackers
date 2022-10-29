@@ -31,7 +31,6 @@ fn handle_client(mut stream: impl Read + Write, _id: usize) -> Result<(), Box<dy
             }
             Message::Query { min_time, max_time } => {
                 let mean: i32 = get_mean_from_minmax_time(&store, min_time, max_time);
-                println!("{} - {} -> {}", min_time, max_time, mean);
                 stream.write_all(&mean.to_be_bytes()).unwrap();
             }
             Message::Undefined => {}
