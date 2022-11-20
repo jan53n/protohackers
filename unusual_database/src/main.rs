@@ -20,7 +20,7 @@ fn parse_request(req: &[u8]) -> Result<Request, ()> {
 }
 
 fn main() -> std::io::Result<()> {
-    let socket = UdpSocket::bind("127.0.0.1:8888")?;
+    let socket = UdpSocket::bind("0.0.0.0:8888")?;
     let mut db: HashMap<String, String> = HashMap::default();
 
     loop {
