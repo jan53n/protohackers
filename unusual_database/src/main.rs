@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::UdpSocket};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Request {
     Insert(String, String),
     Retrieve(String),
@@ -50,4 +50,49 @@ fn main() -> std::io::Result<()> {
             }
         }
     }
+}
+
+#[test]
+fn key_value_should_parse() {
+    let parsed = parse_request("key=value".as_bytes()).unwrap();
+    assert_eq!(
+        Request::Insert(String::from("key"), String::from("value")),
+        parsed
+    );
+}
+
+#[test]
+fn value_can_have_eq_char() {
+    let parsed = parse_request("foo=bar=baz".as_bytes()).unwrap();
+    assert_eq!(
+        Request::Insert(String::from("foo"), String::from("bar=baz")),
+        parsed
+    );
+}
+
+#[test]
+fn value_can_be_empty_string() {
+    let parsed = parse_request("foo=".as_bytes()).unwrap();
+    assert_eq!(
+        Request::Insert(String::from("foo"), String::from("")),
+        parsed
+    );
+}
+
+#[test]
+fn value_can_be_eqeq() {
+    let parsed = parse_request("foo===".as_bytes()).unwrap();
+    assert_eq!(
+        Request::Insert(String::from("foo"), String::from("==")),
+        parsed
+    );
+}
+
+#[test]
+fn key_can_be_empty_string() {
+    let parsed = parse_request("=foo".as_bytes()).unwrap();
+    assert_eq!(
+        Request::Insert(String::from(""), String::from("foo")),
+        parsed
+    );
 }
