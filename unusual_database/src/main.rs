@@ -1,20 +1,21 @@
-use std::{collections::HashMap, net::UdpSocket, str::FromStr};
+use std::{collections::HashMap, net::UdpSocket};
 
+#[derive(Debug)]
 enum Request {
     Insert(String, String),
     Retrieve(String),
 }
 
 fn parse_request(req: &[u8]) -> Result<Request, ()> {
-    let payload = String::from_utf8(req.to_vec()).unwrap();
+    let payload = core::str::from_utf8(req).unwrap();
 
     if let Some(eq_loc) = payload.find('=') {
-        return Ok(Request::Insert(
-            String::from_str(&payload[0..eq_loc]).unwrap(),
-            String::from_str(&payload[eq_loc..]).unwrap(),
-        ));
+        Ok(Request::Insert(
+            payload[0..eq_loc].to_string(),
+            payload[eq_loc + 1..].to_string(),
+        ))
     } else {
-        return Ok(Request::Retrieve(payload));
+        Ok(Request::Retrieve(payload.to_string()))
     }
 }
 
@@ -27,9 +28,13 @@ fn main() -> std::io::Result<()> {
         let (_, src) = socket.recv_from(&mut buf)?;
 
         if let Ok(req) = parse_request(&buf) {
+            println!("{:?}", req);
+
             match req {
                 Request::Insert(key, value) => {
-                    db.insert(key, value).unwrap();
+                    db.entry(key)
+                        .and_modify(|v| *v = value.clone())
+                        .or_insert(value);
                 }
                 Request::Retrieve(key) => {
                     if key == "version" {
