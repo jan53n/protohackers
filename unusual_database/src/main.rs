@@ -30,6 +30,8 @@ fn main() -> std::io::Result<()> {
         let (_, src) = socket.recv_from(&mut buf)?;
 
         if let Ok(req) = parse_request(&buf) {
+            println!("{:?}", req);
+
             match req {
                 Request::Insert(key, value) => {
                     db.entry(key)
