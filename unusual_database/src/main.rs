@@ -27,6 +27,8 @@ fn main() -> std::io::Result<()> {
         let mut buf = [0; 512];
         let (_, src) = socket.recv_from(&mut buf)?;
 
+        println!("{:?}", buf);
+
         if let Ok(req) = parse_request(&buf) {
             println!("{:?}", req);
 
