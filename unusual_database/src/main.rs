@@ -42,9 +42,11 @@ fn main() -> std::io::Result<()> {
                             .send_to("version=Ken's Key-Value Store 1.0".as_bytes(), src)
                             .unwrap();
                     } else if let Some(value) = db.get(&key) {
-                        socket.send_to(value.as_bytes(), src).unwrap();
+                        socket
+                            .send_to(format!("{}={}", key, value).as_bytes(), src)
+                            .unwrap();
                     } else {
-                        socket.send_to("".as_bytes(), src).unwrap();
+                        socket.send_to(format!("{key}=").as_bytes(), src).unwrap();
                     }
                 }
             }
