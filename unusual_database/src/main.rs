@@ -9,7 +9,7 @@ enum Request {
 fn parse_request(req: &[u8]) -> Result<Request, ()> {
     let payload = core::str::from_utf8(req)
         .unwrap()
-        .trim_matches(|v| v == char::from(0) || v == char::from(10));
+        .trim_matches(char::from(0));
 
     if let Some(eq_loc) = payload.find('=') {
         Ok(Request::Insert(
