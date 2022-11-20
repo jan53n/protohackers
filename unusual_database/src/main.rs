@@ -7,7 +7,9 @@ enum Request {
 }
 
 fn parse_request(req: &[u8]) -> Result<Request, ()> {
-    let payload = core::str::from_utf8(req).unwrap();
+    let payload = core::str::from_utf8(req)
+        .unwrap()
+        .trim_matches(|v| v == char::from(0) || v == char::from(10));
 
     if let Some(eq_loc) = payload.find('=') {
         Ok(Request::Insert(
@@ -27,11 +29,7 @@ fn main() -> std::io::Result<()> {
         let mut buf = [0; 512];
         let (_, src) = socket.recv_from(&mut buf)?;
 
-        println!("{:?}", buf);
-
         if let Ok(req) = parse_request(&buf) {
-            println!("{:?}", req);
-
             match req {
                 Request::Insert(key, value) => {
                     db.entry(key)
