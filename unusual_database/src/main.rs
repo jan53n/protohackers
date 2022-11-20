@@ -26,7 +26,7 @@ fn main() -> std::io::Result<()> {
     let mut db: HashMap<String, String> = HashMap::default();
 
     loop {
-        let mut buf = [0; 512];
+        let mut buf = [0; 999];
         let (_, src) = socket.recv_from(&mut buf)?;
 
         if let Ok(req) = parse_request(&buf) {
